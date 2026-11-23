@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horarios FCOM | UC</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eceff4; margin: 0; padding: 0;
+            color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* ── BARRA SUPERIOR (igual que Mallas) ── */
+        .top-bar {
+            background: #2c3e50; padding: 0 16px;
+            display: flex; align-items: stretch; flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25); min-height: 48px; overflow: visible;
+        }
+        .app-title-wrap { position: relative; display: flex; align-items: stretch; flex-shrink: 0; margin-right: 8px; border-right: 1px solid rgba(255,255,255,0.12); }
+        .app-title-btn {
+            color: #ecf0f1; font-size: 0.95em; font-weight: 700; letter-spacing: 0.04em;
+            display: flex; align-items: center; gap: 6px; padding: 0 20px 0 0;
+            background: transparent; border: none; cursor: pointer; white-space: nowrap;
+            font-family: inherit; transition: color 0.15s;
+        }
+        .app-title-btn:hover { color: #fff; }
+        .app-title-btn .marca-uc { font-weight: 400; }
+        .app-title-btn .chevron { font-size: 0.75em; opacity: 0.7; transition: transform 0.2s; }
+        .app-title-btn.open .chevron { transform: rotate(180deg); }
+        .titulo-vista {
+            display: flex; align-items: center; gap: 10px; padding: 0 12px; flex: 1; min-width: 0;
+            color: #fff; font-size: 0.88em; font-weight: 600; white-space: nowrap;
+            border-bottom: 3px solid #3498db; background: rgba(255,255,255,0.07); max-width: max-content;
+        }
+        .titulo-vista .oferta { font-weight: 400; color: rgba(255,255,255,0.55); overflow: hidden; text-overflow: ellipsis; }
+        .espaciador { flex: 1; }
+
+        .tab-dropdown {
+            display: none; position: fixed;
+            background: #fff; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+            min-width: 250px; z-index: 9000; overflow: hidden; flex-direction: column;
+        }
+        .tab-dropdown.open { display: flex; }
+        .dd-item {
+            display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+            font-size: 0.88em; color: #2c3e50; cursor: pointer;
+            transition: background 0.12s; border: none; background: none;
+            font-family: inherit; text-align: left; width: 100%;
+        }
+        .dd-item:hover { background: #f0f4f8; }
+        .dd-item .dd-icon { font-size: 1em; width: 18px; text-align: center; flex-shrink: 0; }
+        .dd-sep { height: 1px; background: #eee; margin: 4px 0; }
+        .dd-item.dd-danger { color: #c0392b; }
+        .dd-item.dd-danger:hover { background: #fdf0ee; }
+
+        /* ── INDICADORES (cursos, créditos, choques) ── */
+        .fb-status {
+            display: flex; align-items: center; gap: 7px; padding: 0 14px;
+            border-left: 1px solid rgba(255,255,255,0.12); flex-shrink: 0;
+            font-size: 0.74em; font-weight: 600; color: rgba(255,255,255,0.75); white-space: nowrap;
+        }
+        .fb-status b { color: #fff; font-size: 1.15em; }
+        .fb-dot { width: 7px; height: 7px; border-radius: 50%; background: #7f8c8d; flex-shrink: 0; }
+        .fb-dot.saved { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+        .fb-dot.error { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; }
+
+        /* ── MODALES ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            padding: 24px 28px; width: 340px; max-width: 95vw; max-height: 90vh;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+        }
+        .modal-box h3 { margin: 0; font-size: 1.05em; color: #2c3e50; text-align: center; }
+        .btn-modal-save   { background: #27ae60; color: #fff; border: none; padding: 7px 16px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 0.85em; font-family: inherit; }
+        .btn-modal-save:hover { background: #1e8449; }
+        .btn-modal-cancel { background: #ecf0f1; color: #555; border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 0.85em; font-family: inherit; }
+        .btn-modal-cancel:hover { background: #dde; }
+        .btn-mini { font-size: 0.75em; padding: 3px 9px; }
+
+        /* ── WORKSPACE: catálogo a la izquierda, horario a la derecha ── */
+        .workspace { display: grid; grid-template-columns: 290px 1fr; flex: 1; min-height: 0; padding: 14px 16px; }
+        .backlog-panel {
+            background: white; padding: 10px; border-radius: 8px 0 0 8px;
+            box-shadow: 1px 0 0 #e0e0e0, 0 1px 4px rgba(0,0,0,0.07);
+            display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+        }
+        .backlog-header {
+            display: flex; align-items: baseline; justify-content: space-between;
+            border-bottom: 2px solid #eee; padding-bottom: 7px; margin-bottom: 8px;
+        }
+        .backlog-header h3 { margin: 0; font-size: 0.9em; font-weight: 700; }
+        .combo-plan {
+            flex: 1; min-width: 0; margin-right: 8px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 5px;
+            font-family: inherit; font-size: 0.85em; font-weight: 700; color: #2c3e50; background: #fff; cursor: pointer;
+        }
+        .combo-plan:focus { outline: none; border-color: #3498db; }
+        .combo-plan.activo { background: #eaf2fb; border-color: #3498db; }
+        .combo-plan.atenuado { opacity: 0.45; }
+        /* pestañas del catálogo */
+        .pestanas-cat { display: flex; background: #eef1f4; border-radius: 7px; padding: 3px; gap: 3px; margin-bottom: 8px; flex-shrink: 0; }
+        .pest {
+            flex: 1; border: none; background: transparent; color: #5d6d7e; font-family: inherit; font-size: 0.8em;
+            font-weight: 700; padding: 6px 4px; border-radius: 5px; cursor: pointer; transition: background 0.15s, color 0.15s;
+        }
+        .pest:hover { color: #2c3e50; }
+        .pest.activa { background: #2c3e50; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .aviso-cat { text-align: center; font-size: 0.76em; color: #7f8c8d; padding: 4px 6px; font-style: italic; flex-shrink: 0; }
+        .card-esc { display: none; font-size: 0.74em; font-weight: 600; opacity: 0.85; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .backlog-container.global .card-esc { display: block; }
+        .backlog-header .contador { font-size: 0.75em; color: #95a5a6; font-weight: 600; }
+        .filtro-wrap { position: relative; margin-bottom: 8px; flex-shrink: 0; }
+        .filtro-wrap input {
+            width: 100%; padding: 7px 28px 7px 10px; border: 1px solid #ccc; border-radius: 5px;
+            font-size: 0.85em; font-family: inherit; color: #333; transition: border-color 0.15s;
+        }
+        .filtro-wrap input:focus { outline: none; border-color: #3498db; }
+        .filtro-limpiar {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            border: none; background: none; color: #999; cursor: pointer; font-size: 0.95em; padding: 2px 4px; display: none;
+        }
+        .filtro-limpiar.visible { display: block; }
+        .backlog-container {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+            padding: 6px; background: #fafafa; border: 1px dashed #ccc; border-radius: 4px; min-height: 60px;
+        }
+        .catalogo-vacio { padding: 20px 8px; text-align: center; color: #95a5a6; font-size: 0.82em; }
+
+        /* ── TARJETAS DEL CATÁLOGO ── */
+        /* ── FILTROS DE CAMPUS Y DÍA ── */
+        .filtros-chk { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
+        .chk-grupo { display: flex; align-items: center; gap: 6px; }
+        .chk-grupo .chk-titulo { font-size: 0.66em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #999; width: 46px; flex-shrink: 0; }
+        .chk-items { display: flex; gap: 4px; flex: 1; }
+        /* etiquetas que se encienden o apagan con un clic */
+        .etq {
+            flex: 1; padding: 4px 0; border-radius: 5px; border: 1px solid transparent;
+            font-family: inherit; font-size: 0.74em; font-weight: 400; letter-spacing: 0.03em;
+            cursor: pointer; user-select: none; text-align: center;
+            transition: background 0.12s, color 0.12s, opacity 0.12s;
+        }
+        .etq:hover { filter: brightness(1.08); }
+        .etq.apagada { background: #f0f2f5 !important; color: #a0a8b0 !important; border-color: #e0e4e8; text-decoration: line-through; }
+
+        .curso-card {
+            padding: 9px 9px 8px; border-radius: 6px; cursor: pointer; font-size: 0.82em;
+            position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            user-select: none; border: 2px solid transparent; flex-shrink: 0;
+            background-color: #dde1e7; color: #444;
+            transition: background-color 0.18s, opacity 0.18s, filter 0.12s;
+        }
+        .curso-card:hover { filter: brightness(1.06); }
+        .curso-code { font-weight: bold; opacity: 0.9; margin-bottom: 2px; font-size: 0.78em; }
+        .curso-name { font-weight: 500; line-height: 1.2; max-height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .curso-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 3px; font-size: 0.78em; opacity: 0.85; }
+        .curso-card.en-horario { box-shadow: 0 0 0 2px rgba(255,255,255,0.85) inset, 0 2px 4px rgba(0,0,0,0.1); }
+        .curso-footer .sin-horario { font-style: italic; }
+        /* enlace al programa del curso en el catálogo UC (abajo a la derecha) */
+        .prog-link { display: flex; align-items: center; color: inherit; opacity: 0.6; text-decoration: none; padding: 1px 2px; border-radius: 3px; transition: opacity 0.15s, background 0.15s; }
+        .prog-link:hover { opacity: 1; background: rgba(255,255,255,0.25); }
+        .curso-card.seleccionada { background-color: #f1c40f !important; color: #333 !important; outline: 3px solid #d4ac0d; }
+        .estado-badge { position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; color:#fff; background:#27ae60; font-size:0.72em; font-weight:800; text-align:center; line-height:18px; z-index:3; box-shadow:0 1px 2px rgba(0,0,0,0.3); display: none; }
+        .curso-card.en-horario .estado-badge { display: block; }
+
+        /* ── ÁREA DEL HORARIO ── */
+        .horario-area {
+            display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+            border-radius: 0 8px 8px 0; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            transition: box-shadow 0.15s;
+        }
+        .barra-vista {
+            flex-shrink: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.8em; color: #666; min-height: 42px;
+        }
+        .barra-vista .ayuda { color: #95a5a6; }
+        .barra-vista .vista-nombre { font-weight: 700; color: #2c3e50; }
+        .barra-vista .chip-vista { background: #f1c40f; color: #333; border-radius: 4px; padding: 2px 7px; font-weight: 700; }
+        .barra-vista .aviso-choque { color: #c0392b; font-weight: 700; }
+        .barra-vista .acciones { margin-left: auto; display: flex; gap: 6px; }
+        .horario-scroll { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px 12px; }
+        .horario-grid {
+            display: grid; gap: 4px; height: 100%; min-height: 640px; min-width: 760px;
+            grid-template-columns: 46px repeat(6, minmax(0, 1fr));
+            grid-template-rows: 32px repeat(4, minmax(56px, 1fr)) minmax(40px, 0.65fr) repeat(5, minmax(56px, 1fr));
+        }
+        .cab-dia {
+            background: #e9ecef; border-radius: 6px 6px 0 0; font-weight: bold; font-size: 0.85em;
+            display: flex; align-items: center; justify-content: center; color: #2c3e50;
+        }
+        .cab-mod {
+            background: #e9ecef; border-radius: 6px 0 0 6px; font-weight: bold; font-size: 0.78em;
+            display: flex; align-items: center; justify-content: center; color: #2c3e50;
+        }
+        .cab-mod.ma, .celda.ma { background-color: #f4f1e8; }
+        .celda {
+            position: relative; border-radius: 5px; background: #f8f9fa; border: 1px solid #eef0f2;
+            padding: 4px 6px; font-size: 0.7em; line-height: 1.2; overflow: hidden; min-width: 0;
+            display: flex; flex-direction: column; gap: 1px; transition: filter 0.12s, box-shadow 0.12s;
+            user-select: none;
+        }
+        .celda > * { pointer-events: none; }   /* el clic y el doble clic siempre llegan a la celda */
+        .celda.ocupada { border-color: transparent; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .celda.ocupada:hover, .celda.enlazada { filter: brightness(1.07); box-shadow: 0 0 0 2px rgba(0,0,0,0.35) inset; }
+        .celda .c-cod { font-weight: 800; display: flex; justify-content: space-between; gap: 4px; }
+        .celda .c-cs { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .celda .c-tipo { font-weight: 600; }
+        .celda .t-corta, .horario-grid.seis .celda .t-larga { display: none; }
+        .horario-grid.seis .celda .t-corta { display: inline; }
+        .celda .c-nrcd { font-weight: 600; opacity: 0.85; white-space: nowrap; }
+        .celda .c-pie { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+        .celda .prog-link { pointer-events: auto; padding: 0 1px; }
+        .celda .c-modl { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .celda > * { flex-shrink: 0; }
+        .celda .c-nom { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .celda .c-prof { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* MA es una franja angosta: solo código y modalidad (el resto va en el recuadro informativo) */
+        .celda.ma .c-nom, .celda.ma .c-prof { display: none; }
+        /* texto libre que escribe el estudiante en un módulo */
+        .celda.nota { background: #fff; border: 1.5px dashed #7f8c8d; color: #2c3e50; cursor: pointer; }
+        .celda.nota:hover { background: #f4f6f8; }
+        .celda .c-nota { font-weight: 600; font-style: italic; white-space: pre-wrap; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; }
+        .celda.ma .c-nota { -webkit-line-clamp: 2; }
+        .nota-input { width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; font-size: 0.88em; }
+        .nota-input:focus { outline: none; border-color: #3498db; }
+        .pop-acciones { display: flex; justify-content: flex-end; gap: 8px; }
+        .celda.choque {
+            background-color: #e74c3c; color: #fff;
+            background-image: repeating-linear-gradient(45deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 6px,rgba(0,0,0,0.10) 6px,rgba(0,0,0,0.10) 10px);
+        }
+        .celda.choque .c-titulo { font-weight: 800; }
+        .celda.choque .c-linea { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* vista previa del curso seleccionado */
+        .celda.vista { outline: 3px solid #d4ac0d; outline-offset: -3px; }
+        .celda.vista:not(.ocupada) { background: #fdf3c4; border-color: #f1c40f; }
+        .celda.vista.vista-choque { outline-color: #c0392b; outline-style: dashed; }
+        .c-vista {
+            position: absolute; left: 4px; bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); max-width: calc(100% - 8px) !important;
+            background: #f1c40f; color: #333; border-radius: 3px;
+            padding: 1px 5px; font-weight: 700; font-size: 0.95em; white-space: nowrap; max-width: 100%;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .vista-choque .c-vista { background: #c0392b; color: #fff; }
+        .sin-horario-bar {
+            flex-shrink: 0; display: none; align-items: center; gap: 6px; flex-wrap: wrap;
+            padding: 8px 12px; border-top: 1px solid #eee; font-size: 0.78em; color: #666;
+        }
+        .sin-horario-bar.visible { display: flex; }
+        .chip-curso { display: inline-flex; align-items: center; gap: 6px; border-radius: 12px; padding: 2px 4px 2px 10px; font-weight: 700; }
+        .chip-curso button { border: none; background: rgba(0,0,0,0.2); color: #fff; border-radius: 50%; width: 16px; height: 16px; line-height: 14px; padding: 0; cursor: pointer; font-weight: bold; }
+        .chip-curso button:hover { background: #c0392b; }
+
+        /* ── POPUP (eliminar / choque) ── */
+        .color-popup {
+            display: none; position: fixed; z-index: 2000;
+            background: #fff; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+            padding: 14px 16px; min-width: 240px; flex-direction: column; gap: 10px;
+        }
+        .color-popup.open { display: flex; }
+        .color-popup h4 { margin: 0; font-size: 0.82em; color: #555; text-transform: uppercase; letter-spacing: 0.04em; padding-right: 18px; }
+        .color-popup-close { position: absolute; top: 8px; right: 10px; background: none; border: none; cursor: pointer; font-size: 1.05em; color: #888; padding: 0; }
+        .elec-popup { max-width: 440px; max-height: 70vh; overflow: auto; }
+        .elec-nota { font-size: 0.82em; color: #555; margin: 0; line-height: 1.4; }
+        .elec-lista { display: flex; flex-direction: column; gap: 6px; }
+        .elec-op { display: flex; gap: 8px; align-items: baseline; font-size: 0.82em; padding: 6px 6px 6px 8px; border-radius: 5px; background: #f8f9fa; border-left: 5px solid #ccc; }
+        .mc-cod { font-weight: 700; color: #34495e; white-space: nowrap; }
+        .mc-nom { flex: 1; color: #444; }
+        .mc-tag { font-size: 0.78em; font-weight: 800; border-radius: 4px; padding: 1px 6px; white-space: nowrap; background: #e74c3c; color: #fff; }
+
+        /* ── AVISO TEMPORAL ── */
+        .toast {
+            position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0;
+            background: #2c3e50; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.85em;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 5000; pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s; max-width: 90vw;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+        .toast.con-accion { pointer-events: auto; }
+        .toast button { background: none; border: 1px solid rgba(255,255,255,0.5); color: #fff; border-radius: 5px; padding: 3px 10px; font-family: inherit; font-size: 0.95em; font-weight: 700; cursor: pointer; }
+        .toast button:hover { background: rgba(255,255,255,0.15); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* ── IMPRESIÓN / PDF: solo la grilla, en blanco y negro ──
+           @page con margen 0 elimina el encabezado y el pie que agrega el navegador
+           (título, fecha, dirección); el margen real lo da el padding del body */
+        @media print {
+            @page { size: A4 landscape; margin: 0; }
+            html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
+            body { padding: 10mm !important; display: block !important; }
+            .top-bar, .backlog-panel, .barra-vista, .sin-horario-bar, .color-popup, .toast, .modal-overlay, .tab-dropdown { display: none !important; }
+            .workspace { display: block !important; padding: 0 !important; }
+            .horario-area, .horario-scroll { overflow: visible !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+            .horario-grid { min-width: 0 !important; min-height: 0 !important; height: 186mm !important; gap: 0 !important; }
+            .cab-dia, .cab-mod, .cab-mod.ma {
+                background: #fff !important; color: #000 !important; border: 0.6pt solid #000 !important; border-radius: 0 !important;
+            }
+            .celda, .celda.ma, .celda.ocupada, .celda.choque, .celda.nota {
+                background: #fff !important; color: #000 !important; filter: none !important;
+                border: 0.6pt solid #000 !important; border-radius: 0 !important; box-shadow: none !important; outline: none !important;
+            }
+            .celda.choque { background-image: repeating-linear-gradient(45deg,#fff 0,#fff 5px,#ccc 5px,#ccc 6px) !important; }
+            .celda .c-prof, .celda .c-nrcd, .celda .c-nom { opacity: 1 !important; }
+            .c-vista, .prog-link { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- AVISO: la página no trae la oferta incrustada (se genera con construir_horarios.py) -->
+<div class="modal-overlay" id="sin-oferta">
+    <div class="modal-box">
+        <div style="text-align:center;font-size:2em;line-height:1;">🗓️</div>
+        <h3>Horarios FCOM</h3>
+        <p id="sin-oferta-msg" style="margin:0;font-size:0.85em;color:#777;text-align:center;line-height:1.45;">
+            No se encontró la oferta de cursos en esta página.
+        </p>
+    </div>
+</div>
+
+<!-- POPUP: ¿Eliminar? / detalle de un choque -->
+<div class="color-popup elec-popup" id="pop"></div>
+<div class="toast" id="toast"></div>
+
+<!-- BARRA SUPERIOR -->
+<div class="top-bar">
+    <div class="app-title-wrap">
+        <button class="app-title-btn" id="app-menu-btn">FCOM<span class="marca-uc"> | UC</span> <span class="chevron">▾</span></button>
+        <div class="tab-dropdown" id="app-dropdown"></div>
+    </div>
+    <div class="titulo-vista">Horario semanal <span class="oferta" id="oferta-nombre"></span></div>
+    <div class="espaciador"></div>
+    <div class="fb-status"><span>Cursos</span> <b id="st-cursos">0</b></div>
+    <div class="fb-status"><span>Créditos</span> <b id="st-creditos">0</b></div>
+    <div class="fb-status">
+        <span class="fb-dot saved" id="st-dot"></span><span id="st-choques">Sin choques</span>
+    </div>
+</div>
+
+<div class="workspace">
+    <!-- CATÁLOGO -->
+    <div class="backlog-panel">
+        <div class="pestanas-cat" id="pestanas-cat" style="display:none">
+            <button type="button" class="pest activa" data-pest="fcom">Cursos FCOM</button>
+            <button type="button" class="pest" data-pest="uc">Otros cursos</button>
+        </div>
+        <div class="backlog-header"><select id="filtro-escuela" class="combo-plan" style="display:none" title="Escuela"></select><select id="filtro-plan" class="combo-plan" title="Filtrar por paquetes de mínimos"></select><h3 id="cat-titulo">Catálogo de cursos</h3><span class="contador" id="cat-contador"></span></div>
+        <div class="filtro-wrap">
+            <input type="text" id="filtro" placeholder="Filtrar: código, nombre, profesor, NRC…" autocomplete="off">
+            <button class="filtro-limpiar" id="filtro-limpiar" title="Limpiar filtro">✕</button>
+        </div>
+        <div class="filtros-chk">
+            <div class="chk-grupo" id="chk-campus"></div>
+            <div class="chk-grupo" id="chk-dias"></div>
+        </div>
+        <div class="backlog-container" id="catalogo"></div>
+    </div>
+
+    <!-- HORARIO -->
+    <div class="horario-area" id="horario-area">
+        <div class="barra-vista" id="barra-vista"></div>
+        <div class="horario-scroll">
+            <div class="horario-grid" id="grid"></div>
+        </div>
+        <div class="sin-horario-bar" id="sin-horario"></div>
+    </div>
+</div>
+
+<!-- CURSOS ({escuela: [secciones]}) y PAQUETES DE MÍNIMOS ({nombre: [códigos]}).
+     construir_horarios.py pone en cada etiqueta el nombre del JSON (data-src, la página lo lee de su carpeta)
+     o, con --incrustar, el JSON mismo. -->
+<script id="horarios-data" type="application/json" data-oferta="Programados_FCOM_27a" data-archivo="Programados_FCOM_27a" data-escuela-inicial="Actividades Universitarias" data-src="Programados_FCOM_27a.json"></script>
+<script id="paquetes-data" type="application/json" data-paquetes="FCOM_paquetes" data-src="FCOM_paquetes.json"></script>
+
+<script>
+/* ================================================================
+   CONSTANTES
+   ================================================================ */
+const DIAS = [
+    {c:'L', n:'Lunes',     k:'Lu'}, {c:'M', n:'Martes',  k:'Ma'}, {c:'W', n:'Miércoles', k:'Mi'},
+    {c:'J', n:'Jueves',    k:'Ju'}, {c:'V', n:'Viernes', k:'Vi'}, {c:'S', n:'Sábado',    k:'Sá'}
+];
+const MODULOS = ['1','2','3','4','MA','5','6','7','8','9'];
+const MODALIDADES = ['Cátedra','Ayudantía','Terreno','Laboratorio','Taller','Práctica','Tesis','Otro'];
+const ABREV_MOD = {'Cátedra':'Cát.','Ayudantía':'Ayud.','Terreno':'Terr.','Laboratorio':'Lab.',
+                   'Taller':'Tall.','Práctica':'Práct.','Tesis':'Tesis','Otro':'Otro'};
+const MAX_TARJETAS = 200;        // en "Otros cursos" se dibujan como máximo estas tarjetas
+const MIN_BUSQUEDA_GLOBAL = 3;   // caracteres desde los que el buscador recorre todas las escuelas
+const ESCUELA_OTROS = 'Otros';   // escuelas que no están en la lista de escuelas
+const ESCUELA_INICIAL = 'Actividades Universitarias';   // escuela que se muestra al abrir "Otros cursos"
+/* Los colores distinguen solo campus; el rojo queda para los choques y el amarillo para la selección */
+const CAMPUS = [
+    {c:'CC',    n:'Casa Central',      col:'#2980b9'},
+    {c:'SJ',    n:'San Joaquín',       col:'#27ae60'},
+    {c:'CO',    n:'Campus Oriente',    col:'#8e44ad'},
+    {c:'LC',    n:'Lo Contador',       col:'#e67e22'},
+    {c:'Otros', n:'Otros o sin campus', col:'#7f8c8d'}
+];
+const PREFIJO = 'horariosFCOM_';
+const URL_PROGRAMA = 'https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=';
+const SVG_ENLACE = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'+
+    '<path d="M8 1h4v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<path d="M12 1L6 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+/* ================================================================
+   ESTADO
+   ================================================================ */
+let oferta = {nombre:'', cursos:[], porClave:{}};
+let sel = [];               // cursos del horario: [{k: clave}]
+let notas = {};             // textos libres del estudiante: {'d-r': texto}
+let planSel = null;         // filtro del combo FCOM: índice en oferta.filtros, o null (Todo curso FCOM)
+let vistaK = null;          // curso seleccionado (vista previa de sus módulos)
+let diasVis = [0,1,2,3,4];  // columnas visibles (el sábado solo si la oferta o el horario lo usan)
+let fcomSabado = false;     // algún curso FCOM tiene clases el sábado
+let pestana = 'fcom';       // pestaña del catálogo: 'fcom' | 'uc'
+let catUC = null;           // "Otros cursos", una vez preparados: {cursos, porEscuela, escuelas, sabado}
+let escuelaSel = null;      // escuela elegida en el combo de "Otros cursos"
+let listaVisible = [];      // secciones dibujadas en el catálogo, en orden
+const filtroCampus = new Set(CAMPUS.map(x=>x.c));
+const filtroDias = new Set([0,1,2,3,4,5]);
+const cardsPorClave = {};
+
+/* ================================================================
+   UTILIDADES
+   ================================================================ */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function sinTildes(s){return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();}
+function contrastColor(hex){
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    return (0.299*r+0.587*g+0.114*b)>140?'#333333':'#ffffff';
+}
+/* Lee un campo tolerando tildes y mayúsculas distintas (exportaciones de Excel) */
+function campo(o,nombre){
+    if(nombre in o)return o[nombre];
+    const n=sinTildes(nombre);
+    for(const k in o)if(sinTildes(k)===n)return o[k];
+    return undefined;
+}
+/* Módulos dentro de un texto: "M2", "WMA"; también "LIB V2" o "SUP L1" (se toma V2, L1).
+   Textos sin día y módulo ("SUP", "V", "8") no producen módulos. */
+function parseBloques(s){
+    const res=[], re=/(?<![A-Z])([LMWJVS])(MA|[1-9])(?![0-9A-Z])/g;
+    const txt=String(s==null?'':s).toUpperCase();
+    let m;
+    while((m=re.exec(txt)))res.push({d:'LMWJVS'.indexOf(m[1]), r:MODULOS.indexOf(m[2])});
+    return res;
+}
+function nombreModulo(r){return MODULOS[r]==='MA'?'MA':'M'+MODULOS[r];}
+/* "COM141-1"; sin número de sección, solo el código */
+function codSec(e){return e.cod+(e.sec==null||e.sec===''?'':'-'+e.sec);}
+function textoSeccion(e){return e.sec==null||e.sec===''?'—':String(e.sec);}
+function campusDe(e){const c=String(e.campus||'').trim().toUpperCase();return CAMPUS.some(x=>x.c===c)?c:'Otros';}
+function colorCampus(e){return CAMPUS.find(x=>x.c===campusDe(e)).col;}
+let _toastT=null;
+/* accion opcional: {texto, fn} — p. ej. Deshacer */
+function toast(msg,ms,accion){
+    const t=document.getElementById('toast');
+    t.innerHTML='<span>'+esc(msg)+'</span>'+(accion?'<button>'+esc(accion.texto)+'</button>':'');
+    t.classList.toggle('con-accion',!!accion);
+    if(accion)t.querySelector('button').addEventListener('click',()=>{t.classList.remove('visible','con-accion');accion.fn();});
+    t.classList.add('visible');
+    clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('visible','con-accion'),ms||3800);
+}
+/* ================================================================
+   LECTURA DE SECCIONES (común a ambas pestañas)
+   ================================================================ */
+/* Una sección del JSON → objeto interno. Los textos de módulo que no se reconocen ("SUP", "V", "8")
+   se guardan en raros: el curso se puede agregar, pero queda en la lista "sin módulos". */
+function leerSeccion(raw,extra){
+    const cod=String(campo(raw,'Código')==null?'':campo(raw,'Código')).trim();
+    if(!cod)return null;
+    const sec=campo(raw,'Sección'), nrc=campo(raw,'NRC');
+    const e=Object.assign({
+        cod:cod,
+        nom:String(campo(raw,'Nombre')||'').trim(),
+        sec:(sec==null?null:sec),
+        nrc:(nrc==null?null:nrc),
+        cr:parseFloat(campo(raw,'Créditos'))||0,
+        prof:String(campo(raw,'Profesor')||'').trim(),
+        campus:String(campo(raw,'Campus')||'').trim(),
+        bloques:[], raros:[], planes:{}
+    },extra||{});
+    MODALIDADES.forEach(m=>{
+        const arr=campo(raw,m);
+        if(!Array.isArray(arr))return;
+        arr.forEach(s=>{
+            const bs=parseBloques(s);
+            if(bs.length)bs.forEach(b=>{if(!e.bloques.some(x=>x.d===b.d&&x.r===b.r&&x.tipo===m))e.bloques.push({d:b.d,r:b.r,tipo:m});});
+            else if(String(s==null?'':s).trim())e.raros.push(m+': '+String(s).trim());
+        });
+    });
+    e.busca=sinTildes([e.cod,e.nom,e.prof,e.nrc,e.campus,'secc '+textoSeccion(e),e.esc||''].join(' '));
+    return e;
+}
+/* Clave estable: prefijo + código|sección|NRC (con #n si se repite) */
+function asignarClave(e,prefijo,usadas){
+    const base=prefijo+e.cod+'|'+(e.sec==null?'':e.sec)+'|'+(e.nrc==null?'':e.nrc);
+    usadas[base]=(usadas[base]||0)+1;
+    e.k=usadas[base]>1?base+'#'+usadas[base]:base;
+}
+function ordenarPorNombre(a,b){
+    return a.nom.localeCompare(b.nom,'es')||a.cod.localeCompare(b.cod,'es')||((parseFloat(a.sec)||0)-(parseFloat(b.sec)||0));
+}
+
+/* ================================================================
+   OFERTA FCOM: lectura y normalización del JSON
+   Acepta todos los cursos agrupados por escuela {escuela:[...]} (se separan en las dos pestañas),
+   una lista de secciones o {Tipo, Version, Nombre, Cursos:[...]}.
+   Los paquetes de mínimos vienen aparte (#paquetes-data: {nombre del paquete: [códigos]}).
+   Lo incrusta construir_horarios.py; esta página no edita ni abre JSON.
+   ================================================================ */
+/* ================================================================
+   DATOS: incrustados en la página o en archivos JSON de la misma carpeta
+   Cada <script id="…-data"> trae el JSON adentro, o bien data-src con el nombre del archivo.
+   Leer archivos exige abrir la página desde un servidor (sitio web o localhost), no con doble clic.
+   ================================================================ */
+function fuenteDe(id){
+    const tag=document.getElementById(id);
+    if(!tag)return {txt:'',src:''};
+    const txt=tag.textContent.trim();
+    return {txt:(txt[0]==='{'||txt[0]==='[')?txt:'', src:(tag.getAttribute('data-src')||'').trim()};
+}
+/* Promesa con el texto del JSON (o null si no hay ni datos ni archivo) */
+function textoDe(id){
+    const f=fuenteDe(id);
+    if(f.txt)return Promise.resolve(f.txt);
+    if(!f.src)return Promise.resolve(null);
+    const url=f.src.split('/').map(encodeURIComponent).join('/');
+    return fetch(url,{cache:'no-cache'}).then(r=>{
+        if(!r.ok)throw new Error('HTTP '+r.status+' al leer '+f.src);
+        return r.text();
+    });
+}
+let paquetesTexto=null;   // JSON de paquetes ya leído (incrustado o desde archivo)
+function leerPaquetes(){
+    const txt=String(paquetesTexto||'').trim();
+    if(txt[0]!=='{')return null;
+    try{
+        const j=JSON.parse(txt);
+        const res=[];
+        Object.keys(j).forEach(n=>{if(Array.isArray(j[n]))res.push({nombre:n,cods:new Set(j[n].map(c=>String(c).trim().toUpperCase()))});});
+        return res.length?res:null;
+    }catch(err){console.warn('Paquetes no válidos:',err);return null;}
+}
+/* Opciones del combo FCOM: con paquetes, una por paquete, "Otros cursos solicitados" (si los hay)
+   y "Cursos optativos o de servicio FCOM" (cursos COM que no están en ningún paquete);
+   sin paquetes, "Mínimo X" y "No mínimo X" por cada columna verdadero/falso del JSON (formato anterior) */
+const ETIQUETA_SOLICITADOS = 'Otros cursos solicitados';
+const MAX_SOLICITADOS = 15;   // hasta estos cursos no COM ni de paquetes se tratan como FCOM (vacantes especiales)
+function filtrosDelCombo(paquetes,planes,solicitados){
+    const sol=(solicitados&&solicitados.size)?[{etiqueta:ETIQUETA_SOLICITADOS,f:e=>solicitados.has(e.cod.toUpperCase())}]:[];
+    if(paquetes){
+        const todos=new Set();paquetes.forEach(p=>p.cods.forEach(c=>todos.add(c)));
+        return paquetes.map(p=>({etiqueta:p.nombre,f:e=>p.cods.has(e.cod.toUpperCase())})).concat(sol)
+            .concat([{etiqueta:'Cursos optativos o de servicio FCOM',f:e=>!todos.has(e.cod.toUpperCase())&&!(solicitados&&solicitados.has(e.cod.toUpperCase()))}]);
+    }
+    return planes.map(k=>({etiqueta:'Mínimo '+k,f:e=>e.planes[k]===true}))
+        .concat(planes.map(k=>({etiqueta:'No mínimo '+k,f:e=>e.planes[k]!==true}))).concat(sol);
+}
+function instalarOferta(texto,nombre){
+    let json, resto=null, solicitados=null;
+    try{json=JSON.parse(String(texto).replace(/^﻿/,''));}
+    catch(e){alert('El JSON de oferta no es válido: '+e.message);return false;}
+    let lista=json;
+    if(json&&!Array.isArray(json)&&Array.isArray(json.Cursos)){lista=json.Cursos;if(json.Nombre)nombre=json.Nombre;}
+    else if(json&&typeof json==='object'&&!Array.isArray(json)&&Object.values(json).every(Array.isArray)){
+        /* Un solo JSON con todos los cursos, agrupados por escuela. Van a "Cursos FCOM" los códigos COM
+           y los que están en algún paquete; el resto queda para "Otros cursos", que se prepara al abrir
+           esa pestaña (la pestaña aparece solo si queda algo).
+           Excepción: si ese resto tiene 15 cursos (códigos) o menos, son vacantes especiales que pidió la
+           Facultad; van a "Cursos FCOM" con la etiqueta "Otros cursos solicitados" y no hay "Otros cursos". */
+        const enPaquetes=new Set();
+        (leerPaquetes()||[]).forEach(p=>p.cods.forEach(c=>enPaquetes.add(c)));
+        const esFcom=c=>/^COM/i.test(c)||enPaquetes.has(c.toUpperCase());
+        lista=[];resto={};
+        Object.keys(json).forEach(escuela=>json[escuela].forEach(raw=>{
+            if(!raw||typeof raw!=='object')return;
+            const cod=String(campo(raw,'Código')==null?'':campo(raw,'Código')).trim();
+            if(esFcom(cod))lista.push(Object.assign({},raw,{_escuela:escuela}));
+            else (resto[escuela]=resto[escuela]||[]).push(raw);
+        }));
+        const codsResto=new Set();
+        Object.values(resto).forEach(a=>a.forEach(raw=>codsResto.add(String(campo(raw,'Código')||'').trim().toUpperCase())));
+        if(codsResto.size&&codsResto.size<=MAX_SOLICITADOS){
+            solicitados=codsResto;
+            Object.keys(resto).forEach(escuela=>resto[escuela].forEach(raw=>lista.push(Object.assign({},raw,{_escuela:escuela}))));
+            resto=null;
+        }
+    }
+    if(!Array.isArray(lista)){alert('El archivo no tiene el formato esperado (secciones de cursos).');return false;}
+    const cursos=[],usadas={};
+    /* columnas con valores verdadero/falso (DAV_06, PER_07…), en el orden en que aparecen */
+    const planes=[];
+    lista.forEach(raw=>{if(raw&&typeof raw==='object')Object.keys(raw).forEach(k=>{
+        if(typeof raw[k]==='boolean'&&!planes.includes(k))planes.push(k);});});
+    lista.forEach(raw=>{
+        if(!raw||typeof raw!=='object')return;
+        const e=leerSeccion(raw,raw._escuela?{esc:raw._escuela}:null);if(!e)return;
+        planes.forEach(k=>{e.planes[k]=(raw[k]===true);});
+        asignarClave(e,'',usadas);
+        cursos.push(e);
+    });
+    cursos.sort(ordenarPorNombre);
+    oferta={nombre:String(nombre||'').replace(/\.json$/i,''),cursos:cursos,porClave:{},planes:planes,
+            filtros:filtrosDelCombo(leerPaquetes(),planes,solicitados)};
+    restoUC=(resto&&Object.keys(resto).length)?resto:null;
+    catUC=null;
+    cursos.forEach(e=>{oferta.porClave[e.k]=e;});
+    fcomSabado=cursos.some(e=>e.bloques.some(b=>b.d===5));
+    mostrarArchivos();
+    vistaK=null;
+    const fuera=cargarSeleccion();
+    diasVis=diasDelHorario();
+    cargarNotas();
+    construirGrid();
+    construirComboPlan();
+    construirFiltrosChk();
+    prepararPestanas();
+    construirCatalogo();
+    refrescar();
+    document.getElementById('sin-oferta').classList.remove('open');
+    if(fuera)toast(fuera+' curso(s) de tu horario guardado ya no están en esta oferta y se quitaron.',6000);
+    return true;
+}
+
+/* Barra superior: nombres de los JSON de los que salen los datos (sin ".json") */
+function mostrarArchivos(){
+    const of=document.getElementById('horarios-data'), pq=document.getElementById('paquetes-data');
+    const cursos=(of&&(of.getAttribute('data-archivo')||of.getAttribute('data-src')||of.getAttribute('data-oferta')))||oferta.nombre||'';
+    const paq=pq?(pq.getAttribute('data-paquetes')||pq.getAttribute('data-src')||''):'';
+    const partes=[];
+    if(cursos)partes.push('Cursos: '+cursos.replace(/\.json$/i,''));
+    if(paq)partes.push('Paquetes: '+paq.replace(/\.json$/i,''));
+    document.getElementById('oferta-nombre').textContent=partes.length?'· '+partes.join(' · '):'';
+}
+/* ================================================================
+   "OTROS CURSOS": lo que no es COM ni está en un paquete, agrupado por escuela.
+   Se prepara recién al abrir la pestaña.
+   ================================================================ */
+let restoUC=null;           // {escuela: [secciones sin procesar]} o null si no hay otros cursos
+function hayCatalogoUC(){return !!restoUC;}
+function cargarCatalogoUC(grupos){
+    const lista=Object.keys(grupos).sort((a,b)=>a.localeCompare(b,'es'));
+    const usadas={}, cursos=[], porEscuela={};
+    lista.forEach(escuela=>{
+        grupos[escuela].forEach(raw=>{
+            const e=leerSeccion(raw,{esc:escuela,ext:true});if(!e)return;
+            asignarClave(e,'U:',usadas);
+            cursos.push(e);
+            (porEscuela[escuela]=porEscuela[escuela]||[]).push(e);
+        });
+    });
+    cursos.sort(ordenarPorNombre);
+    Object.values(porEscuela).forEach(a=>a.sort(ordenarPorNombre));
+    const escuelas=lista.filter(x=>porEscuela[x]&&porEscuela[x].length);
+    catUC={cursos:cursos,porEscuela:porEscuela,escuelas:escuelas,sabado:cursos.some(e=>e.bloques.some(b=>b.d===5))};
+    /* los cursos leídos reemplazan a las copias guardadas en el navegador */
+    cursos.forEach(e=>{oferta.porClave[e.k]=e;});
+    const inicial=document.getElementById('horarios-data').getAttribute('data-escuela-inicial')||ESCUELA_INICIAL;
+    escuelaSel=escuelas.includes(inicial)?inicial:(escuelas[0]||null);
+    const combo=document.getElementById('filtro-escuela');
+    combo.innerHTML=escuelas.map(x=>'<option value="'+esc(x)+'"'+(x===escuelaSel?' selected':'')+'>'+esc(x)+'</option>').join('');
+    guardarSeleccion();
+    return true;
+}
+
+/* ================================================================
+   SELECCIÓN DEL ESTUDIANTE (queda en este navegador)
+   Los cursos de "Otros cursos" se guardan con sus datos, para dibujar el horario
+   sin tener que preparar esa pestaña.
+   ================================================================ */
+function claveAlmacen(){return PREFIJO+'sel|'+(oferta.nombre||'oferta');}
+function copiaCurso(e){
+    return {cod:e.cod,nom:e.nom,sec:e.sec,nrc:e.nrc,cr:e.cr,prof:e.prof,campus:e.campus,esc:e.esc,
+            b:e.bloques.map(b=>[b.d,b.r,b.tipo]),raros:e.raros};
+}
+function desdeCopia(k,x){
+    if(!x||typeof x!=='object'||!x.cod)return null;
+    const e={k:k,cod:String(x.cod),nom:String(x.nom||''),sec:x.sec==null?null:x.sec,nrc:x.nrc==null?null:x.nrc,
+             cr:parseFloat(x.cr)||0,prof:String(x.prof||''),campus:String(x.campus||''),esc:String(x.esc||''),ext:true,
+             bloques:[],raros:Array.isArray(x.raros)?x.raros.map(String):[],planes:{}};
+    (Array.isArray(x.b)?x.b:[]).forEach(b=>{
+        const d=parseInt(b[0],10), r=parseInt(b[1],10);
+        if(d>=0&&d<=5&&r>=0&&r<MODULOS.length&&MODALIDADES.includes(b[2]))e.bloques.push({d:d,r:r,tipo:b[2]});
+    });
+    e.busca=sinTildes([e.cod,e.nom,e.prof,e.nrc,e.campus,e.esc].join(' '));
+    return e;
+}
+function guardarSeleccion(){
+    const datos=sel.map(s=>{const e=oferta.porClave[s.k];return (e&&e.ext)?{k:s.k,x:copiaCurso(e)}:{k:s.k};});
+    try{localStorage.setItem(claveAlmacen(),JSON.stringify(datos));}catch(_){}
+}
+/* Devuelve cuántos cursos guardados ya no calzan con la oferta ("descalces") */
+function cargarSeleccion(){
+    let guardada=[];
+    try{guardada=JSON.parse(localStorage.getItem(claveAlmacen())||'[]');}catch(_){guardada=[];}
+    return aplicarSeleccion(guardada);
+}
+function aplicarSeleccion(lista){
+    sel=[];
+    let fuera=0;
+    (Array.isArray(lista)?lista:[]).forEach(x=>{
+        const k=x&&typeof x==='object'?x.k:x;
+        if(typeof k==='string'&&k.startsWith('U:')&&!oferta.porClave[k]){
+            const e=desdeCopia(k,x&&x.x);
+            if(e)oferta.porClave[k]=e;
+        }
+        if(!oferta.porClave[k]||sel.some(s=>s.k===k)){fuera++;return;}
+        sel.push({k:k});
+    });
+    if(fuera)guardarSeleccion();
+    return fuera;
+}
+function enHorario(k){return sel.some(s=>s.k===k);}
+
+/* ── Textos libres en módulos (cursos de otra facultad, trabajo, etc.) ── */
+function claveNotas(){return PREFIJO+'notas|'+(oferta.nombre||'oferta');}
+function guardarNotas(){try{localStorage.setItem(claveNotas(),JSON.stringify(notas));}catch(_){}}
+function cargarNotas(){
+    let n={};
+    try{n=JSON.parse(localStorage.getItem(claveNotas())||'{}');}catch(_){n={};}
+    notas={};
+    if(n&&typeof n==='object')Object.keys(n).forEach(k=>{
+        const m=/^(\d)-(\d+)$/.exec(k), txt=String(n[k]||'').trim();
+        if(m&&txt&&diasVis.includes(parseInt(m[1],10))&&parseInt(m[2],10)<MODULOS.length)notas[k]=txt;
+    });
+}
+function ponerNota(clave,texto){
+    texto=String(texto||'').trim().slice(0,80);
+    if(texto)notas[clave]=texto;else delete notas[clave];
+    guardarNotas();refrescar();
+}
+function quitarNota(clave){
+    const previo=notas[clave];if(previo==null)return;
+    delete notas[clave];guardarNotas();refrescar();
+    toast('Se borró el texto «'+previo+'».',6000,{texto:'Deshacer',fn:()=>ponerNota(clave,previo)});
+}
+
+function agregar(k){
+    const e=oferta.porClave[k];if(!e)return;
+    if(enHorario(k))return;
+    const otra=sel.map(s=>oferta.porClave[s.k]).find(x=>x&&x.cod===e.cod);
+    sel.push({k:k});
+    guardarSeleccion();
+    refrescar();
+    if(otra)toast('Ojo: ya tenías '+e.cod+' sección '+textoSeccion(otra)+' en tu horario.',5000);
+    else if(!e.bloques.length)toast(e.cod+' no tiene módulos asignados: quedó en la lista bajo el horario.');
+}
+/* Quita un curso; el aviso permite deshacerlo */
+function quitar(k){
+    const i=sel.findIndex(s=>s.k===k);if(i<0)return;
+    const e=oferta.porClave[k];
+    sel.splice(i,1);
+    guardarSeleccion();
+    refrescar();
+    toast('Se eliminó '+e.cod+' sección '+textoSeccion(e)+' del horario.',6000,{texto:'Deshacer',fn:()=>{
+        if(enHorario(k))return;
+        sel.splice(Math.min(i,sel.length),0,{k:k});guardarSeleccion();refrescar();
+    }});
+}
+function alternar(k){if(enHorario(k))quitar(k);else agregar(k);}
+
+/* ================================================================
+   OCUPACIÓN DE LA SEMANA
+   ================================================================ */
+function claveCelda(d,r){return d+'-'+r;}
+/* celda → [{e, tipo}] con los cursos del horario */
+function ocupacion(){
+    const occ={};
+    sel.forEach(s=>{
+        const e=oferta.porClave[s.k];if(!e)return;
+        e.bloques.forEach(b=>{(occ[claveCelda(b.d,b.r)]=occ[claveCelda(b.d,b.r)]||[]).push({e:e,tipo:b.tipo});});
+    });
+    return occ;
+}
+/* Cursos distintos en una celda (un curso puede usar el mismo módulo con dos modalidades) */
+function porCurso(items){
+    const m=new Map();
+    (items||[]).forEach(it=>{
+        if(!m.has(it.e.k))m.set(it.e.k,{e:it.e,tipos:[]});
+        const g=m.get(it.e.k);if(!g.tipos.includes(it.tipo))g.tipos.push(it.tipo);
+    });
+    return [...m.values()];
+}
+function horarioTexto(e){
+    const lineas=MODALIDADES.map(m=>{
+        const bs=e.bloques.filter(b=>b.tipo===m).sort((a,b)=>a.d-b.d||a.r-b.r);
+        return bs.length?m+': '+bs.map(b=>DIAS[b.d].k+' '+nombreModulo(b.r)).join(', '):null;
+    }).filter(Boolean);
+    if(e.raros&&e.raros.length)lineas.push('Sin día y módulo: '+e.raros.join(', '));
+    return lineas.length?lineas.join('\n'):'Sin módulos asignados';
+}
+/* Columnas de la grilla: el sábado aparece si la oferta FCOM o algún curso del horario lo usa */
+function diasDelHorario(){
+    const sab=fcomSabado||sel.some(s=>{const e=oferta.porClave[s.k];return e&&e.bloques.some(b=>b.d===5);});
+    return sab?[0,1,2,3,4,5]:[0,1,2,3,4];
+}
+/* Días de las etiquetas de filtro: además, el sábado de "Otros cursos" en su pestaña */
+function diasDelFiltro(){
+    const d=diasDelHorario();
+    if(d.length===5&&pestana==='uc'&&catUC&&catUC.sabado)return [0,1,2,3,4,5];
+    return d;
+}
+
+/* ================================================================
+   GRILLA
+   ================================================================ */
+function construirGrid(){
+    const g=document.getElementById('grid');
+    g.style.gridTemplateColumns='46px repeat('+diasVis.length+', minmax(0, 1fr))';
+    g.classList.toggle('seis',diasVis.length>5);     // columnas angostas: el tipo va abreviado
+    g.style.minWidth=(46+diasVis.length*125)+'px';
+    let h='<div></div>'+diasVis.map(di=>'<div class="cab-dia">'+DIAS[di].n+'</div>').join('');
+    MODULOS.forEach((m,r)=>{
+        const ma=(m==='MA')?' ma':'';
+        h+='<div class="cab-mod'+ma+'">'+nombreModulo(r)+'</div>';
+        diasVis.forEach(di=>{h+='<div class="celda'+ma+'" id="c-'+di+'-'+r+'" data-d="'+di+'" data-r="'+r+'"></div>';});
+    });
+    g.innerHTML=h;
+}
+let _enlazadaK=null;
+function enlazar(celda){
+    const k=celda&&celda.dataset.k||null;
+    if(k===_enlazadaK)return;
+    _enlazadaK=k;
+    document.querySelectorAll('.celda.enlazada').forEach(c=>c.classList.remove('enlazada'));
+    if(k)document.querySelectorAll('.celda[data-k="'+CSS.escape(k)+'"]').forEach(c=>c.classList.add('enlazada'));
+}
+function renderGrid(){
+    const occ=ocupacion();
+    const vk=vistaK, ve=vk?oferta.porClave[vk]:null;
+    const vista={};
+    if(ve)ve.bloques.forEach(b=>{const c=claveCelda(b.d,b.r);(vista[c]=vista[c]||[]).push(b.tipo);});
+    let choques=0;
+    diasVis.forEach(d=>{for(let r=0;r<MODULOS.length;r++){
+        const cel=document.getElementById('c-'+d+'-'+r);
+        const grupos=porCurso(occ[claveCelda(d,r)]);
+        const nota=notas[claveCelda(d,r)];
+        const v=vista[claveCelda(d,r)];
+        cel.className='celda'+(MODULOS[r]==='MA'?' ma':'');
+        cel.style.background='';cel.style.color='';
+        cel.removeAttribute('data-k');
+        cel.title='';
+        let h='';
+        const total=grupos.length+(nota?1:0);
+        if(total===1&&nota){
+            cel.classList.add('nota');
+            h='<div class="c-nota">'+esc(nota)+'</div>';
+            cel.title=nota+'\nDoble clic para borrar el texto';
+        } else if(total===1){
+            const g=grupos[0], e=g.e, bg=colorCampus(e);
+            cel.classList.add('ocupada');
+            cel.style.background=bg;cel.style.color=contrastColor(bg);
+            cel.dataset.k=e.k;
+            h='<div class="c-cod"><span class="c-cs">'+esc(codSec(e))+' <span class="c-tipo t-larga">('+esc(g.tipos.join(' + '))+')</span><span class="c-tipo t-corta">('+esc(g.tipos.map(x=>ABREV_MOD[x]||x).join('+'))+')</span></span>'+
+              '<span class="c-nrcd">NRC '+esc(e.nrc==null?'—':e.nrc)+'</span></div>'+
+              '<div class="c-nom">'+esc(e.nom)+'</div>'+
+              (e.prof?'<div class="c-prof">'+esc(e.prof)+'</div>':'')+
+              '<div class="c-pie"><span class="c-modl">'+esc(e.campus||'—')+'</span>'+
+              '<a class="prog-link" href="'+esc(URL_PROGRAMA+encodeURIComponent(e.cod))+'" target="_blank" rel="noopener" '+
+              'title="Programa de '+esc(e.cod)+' en el catálogo UC">'+SVG_ENLACE+'</a></div>';
+            cel.title=e.cod+' — '+e.nom+'\n'+g.tipos.join(' + ')+' · Secc. '+textoSeccion(e)+' · NRC '+(e.nrc==null?'—':e.nrc)+
+                      (e.prof?'\n'+e.prof:'')+'\nCampus: '+(e.campus||'—')+'\nDoble clic para eliminarlo del horario';
+        } else if(total>1){
+            choques++;
+            cel.classList.add('ocupada','choque');
+            h='<div class="c-titulo">⚠ Choque</div>'+
+              grupos.map(g=>'<div class="c-linea">'+esc(codSec(g.e))+' · '+esc(g.tipos.map(t=>ABREV_MOD[t]||t).join('+'))+'</div>').join('')+
+              (nota?'<div class="c-linea">✎ '+esc(nota)+'</div>':'');
+            cel.title='Choque: '+grupos.map(g=>g.e.cod+' ('+g.tipos.join(' + ')+')').concat(nota?['«'+nota+'»']:[]).join(', ')+'\nClic para ver el detalle';
+        }
+        if(v){
+            cel.classList.add('vista');
+            /* si el curso ya está en el horario basta con el contorno; si no, se anticipa el choque */
+            if(!enHorario(vk)){
+                const otros=grupos.filter(g=>g.e.k!==vk).length+(nota?1:0);
+                if(otros)cel.classList.add('vista-choque');
+                h+='<div class="c-vista">'+(otros?'chocaría · ':'')+esc(ve.cod)+' · '+esc(v.map(t=>ABREV_MOD[t]||t).join('+'))+'</div>';
+            }
+        }
+        cel.innerHTML=h;
+    }});
+    return choques;
+}
+function gruposCelda(cel){
+    const d=parseInt(cel.dataset.d,10), r=parseInt(cel.dataset.r,10);
+    return {d:d,r:r,grupos:porCurso(ocupacion()[claveCelda(d,r)]),nota:notas[claveCelda(d,r)]||null};
+}
+/* Clic: selecciona el curso del módulo (o muestra el detalle del choque) */
+function clicCelda(ev){
+    if(ev.target.closest('.prog-link'))return;      // el enlace al programa solo abre el programa
+    const cel=ev.target.closest('.celda');if(!cel)return;
+    ev.stopPropagation();
+    cerrarMenus();
+    const {d,r,grupos,nota}=gruposCelda(cel);
+    if(grupos.length+(nota?1:0)>1){popChoque(ev,grupos,nota,d,r);return;}
+    cerrarPop();
+    if(grupos.length===1){if(vistaK!==grupos[0].e.k)seleccionar(grupos[0].e.k,true);}
+    else if(vistaK)seleccionar(null);
+}
+/* Doble clic: en un módulo vacío, escribir un texto; sobre un curso o un texto, eliminarlo
+   (en un choque, el detalle que abre el clic permite elegir qué eliminar) */
+function dobleClicCelda(ev){
+    if(ev.target.closest('.prog-link'))return;
+    const cel=ev.target.closest('.celda');if(!cel)return;
+    const {d,r,grupos,nota}=gruposCelda(cel);
+    const total=grupos.length+(nota?1:0);
+    if(total===0)popNota(ev,d,r);
+    else if(total===1&&nota){cerrarPop();quitarNota(claveCelda(d,r));}
+    else if(total===1){cerrarPop();quitar(grupos[0].e.k);}
+}
+
+/* ================================================================
+   POPUP DEL CHOQUE
+   ================================================================ */
+function abrirPop(ev,html,conectar){
+    const pop=document.getElementById('pop');
+    pop.innerHTML='<button class="color-popup-close" data-accion="cerrar" title="Cerrar">✕</button>'+html;
+    pop.querySelector('[data-accion="cerrar"]').addEventListener('click',e=>{e.stopPropagation();cerrarPop();});
+    if(conectar)conectar(pop);
+    pop.classList.add('open');
+    const r=pop.getBoundingClientRect();
+    pop.style.left=Math.max(8,Math.min(ev.clientX,window.innerWidth-r.width-8))+'px';
+    pop.style.top=Math.max(8,Math.min(ev.clientY+10,window.innerHeight-r.height-8))+'px';
+}
+function cerrarPop(){document.getElementById('pop').classList.remove('open');}
+function popChoque(ev,grupos,nota,d,r){
+    abrirPop(ev,
+        '<h4>Choque · '+DIAS[d].n+' '+nombreModulo(r)+'</h4>'+
+        '<div class="elec-lista">'+grupos.map(g=>
+            '<div class="elec-op" style="border-left-color:'+colorCampus(g.e)+'">'+
+              '<span class="mc-cod">'+esc(g.e.cod)+'</span>'+
+              '<span class="mc-nom">'+esc(g.e.nom)+' <span style="color:#95a5a6">· Secc. '+esc(textoSeccion(g.e))+'</span></span>'+
+              '<span class="mc-tag">'+esc(g.tipos.join(' + '))+'</span>'+
+              '<button class="btn-modal-cancel btn-mini" data-quitar="'+esc(g.e.k)+'" title="Eliminar este curso del horario">Eliminar</button>'+
+            '</div>').join('')+
+        (nota?'<div class="elec-op" style="border-left-color:#7f8c8d;border-left-style:dashed">'+
+              '<span class="mc-cod">✎</span><span class="mc-nom"><i>'+esc(nota)+'</i></span>'+
+              '<button class="btn-modal-cancel btn-mini" data-quitar-nota="1" title="Borrar este texto">Eliminar</button></div>':'')+
+        '</div>'+
+        '<p class="elec-nota" style="font-size:0.75em;color:#95a5a6;">El horario advierte los choques, pero no los impide.</p>',
+        pop=>{
+            pop.querySelectorAll('[data-quitar]').forEach(b=>b.addEventListener('click',x=>{
+                x.stopPropagation();cerrarPop();quitar(b.dataset.quitar);
+            }));
+            const bn=pop.querySelector('[data-quitar-nota]');
+            if(bn)bn.addEventListener('click',x=>{x.stopPropagation();cerrarPop();quitarNota(claveCelda(d,r));});
+        });
+}
+/* Escribir un texto libre en un módulo vacío */
+function popNota(ev,d,r){
+    abrirPop(ev,
+        '<h4>Texto · '+DIAS[d].n+' '+nombreModulo(r)+'</h4>'+
+        '<input type="text" class="nota-input" maxlength="80" placeholder="Ej.: curso de otra facultad, trabajo…">'+
+        '<div class="pop-acciones"><button class="btn-modal-cancel btn-mini" data-accion="no">Cancelar</button>'+
+        '<button class="btn-modal-save btn-mini" data-accion="si">Guardar</button></div>',
+        pop=>{
+            const inp=pop.querySelector('.nota-input');
+            const guardar=()=>{const v=inp.value.trim();cerrarPop();if(v)ponerNota(claveCelda(d,r),v);};
+            inp.addEventListener('keydown',x=>{if(x.key==='Enter'){x.preventDefault();guardar();}});
+            pop.querySelector('[data-accion="no"]').addEventListener('click',x=>{x.stopPropagation();cerrarPop();});
+            pop.querySelector('[data-accion="si"]').addEventListener('click',x=>{x.stopPropagation();guardar();});
+            setTimeout(()=>inp.focus(),0);
+        });
+}
+
+/* ================================================================
+   CATÁLOGO: pestañas "Cursos FCOM" y "Otros cursos"
+   ================================================================ */
+/* Combo FCOM: "Todo curso FCOM" y luego las opciones de filtrosDelCombo (paquetes o columnas verdadero/falso) */
+function construirComboPlan(){
+    const combo=document.getElementById('filtro-plan');
+    planSel=null;
+    combo.innerHTML='<option value="">Todo curso FCOM</option>'+
+        oferta.filtros.map((x,i)=>'<option value="'+i+'">'+esc(x.etiqueta)+'</option>').join('');
+    combo.classList.remove('activo');
+}
+/* Las pestañas aparecen solo si hay cursos que no son COM ni están en un paquete */
+function prepararPestanas(){
+    document.getElementById('pestanas-cat').style.display=hayCatalogoUC()?'':'none';
+    mostrarCabecera();
+}
+function mostrarCabecera(){
+    const fcom=(pestana==='fcom');
+    const conPlanes=(oferta.filtros||[]).length>0;
+    document.getElementById('filtro-plan').style.display=(fcom&&conPlanes)?'':'none';
+    document.getElementById('filtro-escuela').style.display=(!fcom&&catUC)?'':'none';
+    document.getElementById('cat-titulo').style.display=(fcom&&!conPlanes)?'':'none';
+    document.querySelectorAll('#pestanas-cat .pest').forEach(b=>b.classList.toggle('activa',b.dataset.pest===pestana));
+}
+function cambiarPestana(p){
+    if(p===pestana)return;
+    pestana=p;
+    const cont=document.getElementById('catalogo');
+    if(p==='uc'&&!catUC){
+        mostrarCabecera();
+        cont.innerHTML='<div class="catalogo-vacio">Preparando los cursos de otras escuelas…</div>';
+        document.getElementById('cat-contador').textContent='';
+        setTimeout(()=>{          // deja que se pinte el aviso antes de preparar los cursos
+            if(pestana!=='uc')return;
+            cargarCatalogoUC(restoUC);
+            mostrarCabecera();construirFiltrosChk();aplicarFiltro();cont.scrollTop=0;
+        },30);
+        return;
+    }
+    mostrarCabecera();construirFiltrosChk();aplicarFiltro();cont.scrollTop=0;
+}
+function construirFiltrosChk(){
+    const etq=(grupo,valor,texto,activo,bg,titulo)=>
+        '<button type="button" class="etq'+(activo?'':' apagada')+'" data-grupo="'+grupo+'" data-valor="'+valor+'" '+
+        'style="background:'+bg+';color:'+contrastColor(bg)+'" title="'+esc(titulo)+' — clic para mostrar u ocultar">'+esc(texto)+'</button>';
+    document.getElementById('chk-campus').innerHTML='<span class="chk-titulo">Campus</span>'+
+        '<div class="chk-items">'+CAMPUS.map(x=>etq('campus',x.c,x.c,filtroCampus.has(x.c),x.col,x.n)).join('')+'</div>';
+    document.getElementById('chk-dias').innerHTML='<span class="chk-titulo">Días</span>'+
+        '<div class="chk-items">'+diasDelFiltro().map(di=>etq('dias',di,DIAS[di].c,filtroDias.has(di),'#2c3e50',DIAS[di].n)).join('')+'</div>';
+    document.querySelectorAll('.filtros-chk .etq').forEach(b=>b.addEventListener('click',()=>{
+        const esCampus=b.dataset.grupo==='campus';
+        const set=esCampus?filtroCampus:filtroDias;
+        const v=esCampus?b.dataset.valor:parseInt(b.dataset.valor,10);
+        if(set.has(v))set.delete(v);else set.add(v);
+        b.classList.toggle('apagada',!set.has(v));
+        b.blur();                     // las flechas y Enter siguen recorriendo el catálogo
+        aplicarFiltro();
+    }));
+}
+/* Las tarjetas se crean solo cuando se muestran y se reutilizan */
+function tarjeta(e){
+    let card=cardsPorClave[e.k];
+    if(card)return card;
+    card=document.createElement('div');
+    const bg=colorCampus(e);
+    card.className='curso-card'+(e.bloques.length?'':' sin-bloques');
+    card.style.backgroundColor=bg;card.style.color=contrastColor(bg);
+    card.dataset.k=e.k;
+    card.title=e.cod+' — '+e.nom+'\nSección '+textoSeccion(e)+' · NRC '+(e.nrc==null?'—':e.nrc)+' · '+e.cr+' cr.'+
+               (e.prof?'\nProfesor: '+e.prof:'')+'\nCampus: '+(e.campus||'—')+(e.esc?'\nEscuela: '+e.esc:'')+'\n'+horarioTexto(e)+
+               '\n\nClic: ver sus módulos · Doble clic: agregarlo o quitarlo del horario';
+    card.innerHTML=
+        '<div class="estado-badge" title="En tu horario">✓</div>'+
+        '<div class="curso-code">'+esc(codSec(e))+'</div>'+
+        '<div class="curso-name">'+esc(e.nom)+'</div>'+
+        (e.esc?'<div class="card-esc">'+esc(e.esc)+'</div>':'')+
+        '<div class="curso-footer"><span>'+esc(e.campus||'—')+(e.bloques.length?'':' · <span class="sin-horario">sin horario</span>')+'</span>'+
+        '<a class="prog-link" href="'+esc(URL_PROGRAMA+encodeURIComponent(e.cod))+'" target="_blank" rel="noopener" '+
+        'title="Programa de '+esc(e.cod)+' en el catálogo UC">'+SVG_ENLACE+'</a></div>';
+    /* el enlace abre el programa sin seleccionar ni agregar el curso */
+    const enlace=card.querySelector('.prog-link');
+    enlace.addEventListener('click',ev=>ev.stopPropagation());
+    enlace.addEventListener('dblclick',ev=>ev.stopPropagation());
+    card.addEventListener('click',()=>{if(vistaK!==e.k)seleccionar(e.k);});
+    card.addEventListener('dblclick',()=>alternar(e.k));
+    cardsPorClave[e.k]=card;
+    return card;
+}
+function construirCatalogo(){
+    Object.keys(cardsPorClave).forEach(k=>delete cardsPorClave[k]);
+    aplicarFiltro();
+}
+/* Día: se muestran los cursos cuyos módulos caen todos en días marcados
+   (desmarcar el viernes oculta todo lo que tenga clases el viernes). Los cursos sin módulos pasan siempre. */
+function pasaFiltro(e,tokens){
+    if(!e.ext&&planSel!=null&&!oferta.filtros[planSel].f(e))return false;
+    if(!filtroCampus.has(campusDe(e)))return false;
+    if(e.bloques.some(b=>!filtroDias.has(b.d)))return false;
+    return tokens.every(t=>e.busca.includes(t));
+}
+function aplicarFiltro(){
+    const q=sinTildes(document.getElementById('filtro').value);
+    document.getElementById('filtro-limpiar').classList.toggle('visible',!!q);
+    const tokens=q.split(/\s+/).filter(Boolean);
+    const cont=document.getElementById('catalogo');
+    const combo=document.getElementById('filtro-escuela');
+    let base, global=false, tope=Infinity;
+    if(pestana==='fcom')base=oferta.cursos;
+    else if(!catUC)base=[];
+    else{
+        /* con 3 o más caracteres, el buscador recorre todas las escuelas */
+        global=q.replace(/\s/g,'').length>=MIN_BUSQUEDA_GLOBAL;
+        base=global?catUC.cursos:(catUC.porEscuela[escuelaSel]||[]);
+        tope=MAX_TARJETAS;
+    }
+    combo.classList.toggle('atenuado',global);
+    cont.classList.toggle('global',global);
+    const res=base.filter(e=>pasaFiltro(e,tokens));
+    listaVisible=res.slice(0,tope);
+    const nodos=[];
+    if(global){
+        const a=document.createElement('div');a.className='aviso-cat';
+        a.textContent='Buscando en todas las escuelas';nodos.push(a);
+    }
+    listaVisible.forEach(e=>nodos.push(tarjeta(e)));
+    if(!res.length){
+        const v=document.createElement('div');v.className='catalogo-vacio';
+        v.textContent='Ningún curso coincide con el filtro.';nodos.push(v);
+    } else if(res.length>listaVisible.length){
+        const m=document.createElement('div');m.className='aviso-cat';
+        m.textContent='Se muestran '+listaVisible.length+' de '+res.length+'. Escribe más para acotar.';nodos.push(m);
+    }
+    cont.replaceChildren(...nodos);
+    const total=base.length, n=res.length;
+    document.getElementById('cat-contador').textContent=(pestana==='fcom'
+        ?(n===total?total:n+' de '+total)
+        :(global?n:(n===total?total:n+' de '+total)))+' secciones'+(global?' (todas las escuelas)':'');
+    actualizarCatalogo();
+}
+/* Selecciona un curso (o ninguno); desplazar = llevar su tarjeta a la vista */
+function seleccionar(k,desplazar){
+    vistaK=k;
+    refrescar();
+    const card=k&&cardsPorClave[k];
+    if(card&&desplazar!==false&&card.isConnected)card.scrollIntoView({block:'nearest'});
+}
+/* Flechas y Enter: de tarjeta en tarjeta entre las que muestra el filtro */
+function moverSeleccion(paso){
+    const vis=listaVisible;
+    if(!vis.length)return;
+    const j=vistaK?vis.findIndex(e=>e.k===vistaK):-1;
+    const i=(j<0)?(paso>0?0:vis.length-1):Math.max(0,Math.min(vis.length-1,j+paso));
+    if(vis[i].k!==vistaK)seleccionar(vis[i].k);
+}
+function actualizarCatalogo(){
+    listaVisible.forEach(e=>{
+        const card=cardsPorClave[e.k];if(!card)return;
+        card.classList.toggle('en-horario',enHorario(e.k));
+        card.classList.toggle('seleccionada',vistaK===e.k);
+    });
+}
+
+/* ================================================================
+   BARRA DE VISTA PREVIA, CURSOS SIN HORARIO E INDICADORES
+   ================================================================ */
+function renderBarraVista(){
+    const b=document.getElementById('barra-vista');
+    const e=vistaK?oferta.porClave[vistaK]:null;
+    if(!e){
+        b.innerHTML='<span class="ayuda">Clic en un curso para ver sus módulos (↑ ↓ o Enter para recorrer) · '+
+                    'Doble clic en el catálogo para agregarlo · Doble clic en un módulo: eliminar lo que tiene, o escribir un texto si está vacío.</span>';
+        return;
+    }
+    const occ=ocupacion();
+    const choca=new Set();
+    e.bloques.forEach(x=>{
+        porCurso(occ[claveCelda(x.d,x.r)]).forEach(g=>{if(g.e.k!==e.k)choca.add(g.e.cod);});
+        if(notas[claveCelda(x.d,x.r)])choca.add('«'+notas[claveCelda(x.d,x.r)]+'»');
+    });
+    const en=enHorario(e.k);
+    b.innerHTML='<span class="chip-vista">'+esc(e.cod)+' · Secc. '+esc(textoSeccion(e))+'</span>'+
+        '<span class="vista-nombre">'+esc(e.nom)+'</span>'+
+        '<span>'+esc(e.prof||'')+(e.campus?' · '+esc(e.campus):'')+(e.esc?' · '+esc(e.esc):'')+'</span>'+
+        (e.bloques.length?'':'<span>Sin módulos asignados'+(e.raros&&e.raros.length?' ('+esc(e.raros.join(', '))+')':'')+'</span>')+
+        (!en&&choca.size?'<span class="aviso-choque">⚠ chocaría con '+esc([...choca].join(', '))+'</span>':'')+
+        '<span class="acciones">'+
+          (en?'<button class="btn-modal-cancel btn-mini" data-accion="quitar">Quitar del horario</button>'
+             :'<button class="btn-modal-save btn-mini" data-accion="agregar">Agregar al horario</button>')+
+          '<button class="btn-modal-cancel btn-mini" data-accion="cerrar" title="Quitar la selección (Esc)">✕</button>'+
+        '</span>';
+    const k=e.k;
+    b.querySelector('[data-accion="cerrar"]').addEventListener('click',()=>seleccionar(null));
+    const ag=b.querySelector('[data-accion="agregar"]');if(ag)ag.addEventListener('click',()=>agregar(k));
+    const qu=b.querySelector('[data-accion="quitar"]');if(qu)qu.addEventListener('click',()=>quitar(k));
+}
+function renderSinHorario(){
+    const bar=document.getElementById('sin-horario');
+    const lista=sel.map(s=>oferta.porClave[s.k]).filter(e=>e&&!e.bloques.length);
+    bar.classList.toggle('visible',lista.length>0);
+    bar.innerHTML=lista.length?'<span>Sin módulos asignados:</span>'+lista.map(e=>{
+        const bg=colorCampus(e);
+        return '<span class="chip-curso" style="background:'+bg+';color:'+contrastColor(bg)+'" title="'+esc(e.nom+(e.raros&&e.raros.length?'\n'+e.raros.join(', '):''))+'">'+
+               esc(e.cod)+' · Secc. '+esc(textoSeccion(e))+'<button data-quitar="'+esc(e.k)+'" title="Eliminar del horario">×</button></span>';
+    }).join(''):'';
+    bar.querySelectorAll('[data-quitar]').forEach(x=>x.addEventListener('click',ev=>{ev.stopPropagation();quitar(x.dataset.quitar);}));
+}
+function renderIndicadores(choques){
+    const lista=sel.map(s=>oferta.porClave[s.k]).filter(Boolean);
+    document.getElementById('st-cursos').textContent=lista.length;
+    document.getElementById('st-creditos').textContent=lista.reduce((s,e)=>s+(e.cr||0),0);
+    document.getElementById('st-dot').className='fb-dot '+(choques?'error':'saved');
+    document.getElementById('st-choques').innerHTML=choques
+        ?'<b>'+choques+'</b> módulo'+(choques===1?'':'s')+' con choque':'Sin choques';
+}
+function refrescar(){
+    const dias=diasDelHorario();
+    if(dias.length!==diasVis.length){
+        diasVis=dias;construirGrid();
+        if(diasDelFiltro().length!==document.querySelectorAll('.etq[data-grupo="dias"]').length)construirFiltrosChk();
+    }
+    const choques=renderGrid();
+    actualizarCatalogo();
+    renderBarraVista();
+    renderSinHorario();
+    renderIndicadores(choques);
+}
+
+/* ================================================================
+   MENÚ PRINCIPAL
+   ================================================================ */
+function renderMenu(){
+    const it=(acc,icon,txt,peligro)=>'<button class="dd-item'+(peligro?' dd-danger':'')+'" data-menu="'+acc+'"><span class="dd-icon">'+icon+'</span>'+txt+'</button>';
+    return it('pdf','🖨️','Guardar horario como PDF…')+'<div class="dd-sep"></div>'+it('limpiar','🧹','Limpiar horario',true);
+}
+const ACCIONES_MENU={
+    pdf:()=>window.print(),
+    limpiar:()=>{
+        const nn=Object.keys(notas).length;
+        if(!sel.length&&!nn){toast('El horario ya está vacío.');return;}
+        const partes=[];
+        if(sel.length)partes.push(sel.length+' curso'+(sel.length===1?'':'s'));
+        if(nn)partes.push(nn+' texto'+(nn===1?'':'s'));
+        if(confirm('¿Quitar '+partes.join(' y ')+' del horario?')){
+            sel=[];notas={};vistaK=null;guardarSeleccion();guardarNotas();refrescar();
+        }
+    }
+};
+function toggleMenu(){
+    const btn=document.getElementById('app-menu-btn'), dd=document.getElementById('app-dropdown');
+    const abierto=dd.classList.contains('open');
+    cerrarMenus();
+    if(abierto)return;
+    dd.innerHTML=renderMenu();
+    dd.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',()=>{cerrarMenus();ACCIONES_MENU[b.dataset.menu]();}));
+    const r=btn.getBoundingClientRect();
+    dd.style.top=(r.bottom+2)+'px';dd.style.left=r.left+'px';
+    dd.classList.add('open');btn.classList.add('open');
+}
+function cerrarMenus(){
+    document.getElementById('app-dropdown').classList.remove('open');
+    document.getElementById('app-menu-btn').classList.remove('open');
+}
+
+/* ================================================================
+   EVENTOS GLOBALES Y ARRANQUE
+   ================================================================ */
+function iniciarEventos(){
+    document.getElementById('app-menu-btn').addEventListener('click',e=>{e.stopPropagation();toggleMenu();});
+    const filtro=document.getElementById('filtro');
+    filtro.addEventListener('input',aplicarFiltro);
+    const combo=document.getElementById('filtro-plan');
+    combo.addEventListener('change',()=>{
+        const v=combo.value;
+        planSel=(v==='')?null:parseInt(v,10);
+        combo.classList.toggle('activo',planSel!=null);
+        combo.blur();                 // las flechas y Enter siguen recorriendo el catálogo
+        aplicarFiltro();
+    });
+    document.querySelectorAll('#pestanas-cat .pest').forEach(b=>b.addEventListener('click',()=>{b.blur();cambiarPestana(b.dataset.pest);}));
+    const comboEsc=document.getElementById('filtro-escuela');
+    comboEsc.addEventListener('change',()=>{
+        escuelaSel=comboEsc.value;
+        comboEsc.blur();
+        aplicarFiltro();
+        document.getElementById('catalogo').scrollTop=0;
+    });
+    document.getElementById('filtro-limpiar').addEventListener('click',()=>{filtro.value='';aplicarFiltro();filtro.focus();});
+    const g=document.getElementById('grid');
+    g.addEventListener('click',clicCelda);
+    g.addEventListener('dblclick',dobleClicCelda);
+    g.addEventListener('mouseover',e=>enlazar(e.target.closest('.celda')));
+    g.addEventListener('mouseleave',()=>enlazar(null));
+    document.addEventListener('click',e=>{
+        if(!e.target.closest('.app-title-wrap'))cerrarMenus();
+        if(!e.target.closest('#pop'))cerrarPop();
+    });
+    document.addEventListener('keydown',e=>{
+        if(e.key==='Escape'){
+            cerrarPop();cerrarMenus();
+            if(vistaK)seleccionar(null);
+            return;
+        }
+        if(e.altKey||e.ctrlKey||e.metaKey)return;
+        const act=document.activeElement, enFiltro=(act===filtro);
+        /* no interferir con campos de texto; en botones y casillas, Enter conserva su función */
+        const tag=act?act.tagName:'';
+        if(!enFiltro&&(tag==='TEXTAREA'||tag==='SELECT'||tag==='INPUT'))return;
+        if(e.key==='Enter'&&tag==='BUTTON')return;
+        /* las flechas recorren las tarjetas si hay una seleccionada (o si se está en el filtro);
+           Enter hace lo mismo que la flecha hacia abajo */
+        if((e.key==='ArrowDown'||e.key==='ArrowUp'||e.key==='Enter')&&(vistaK||enFiltro)){
+            e.preventDefault();
+            moverSeleccion(e.key==='ArrowUp'?-1:1);
+        }
+    });
+}
+function sinOferta(msg){
+    construirGrid();
+    construirFiltrosChk();
+    refrescar();
+    if(msg)document.getElementById('sin-oferta-msg').innerHTML=msg;
+    document.getElementById('sin-oferta').classList.add('open');
+}
+(function iniciar(){
+    iniciarEventos();
+    const tag=document.getElementById('horarios-data');
+    /* los paquetes son opcionales: si no se pueden leer, el combo usa el formato anterior */
+    const paq=textoDe('paquetes-data').catch(err=>{console.warn('Paquetes:',err);return null;});
+    Promise.all([textoDe('horarios-data'),paq]).then(([txt,ptxt])=>{
+        paquetesTexto=ptxt;
+        if(txt&&instalarOferta(txt,tag.getAttribute('data-oferta')||''))return;
+        sinOferta();
+    }).catch(err=>{
+        console.warn(err);
+        const local=(location.protocol==='file:');
+        sinOferta('No se pudo leer <b>'+esc(tag.getAttribute('data-src')||'la oferta de cursos')+'</b>.<br>'+
+            (local?'La página se abrió como archivo local: los JSON solo se pueden leer si se abre desde un sitio web '+
+                   'o un servidor local (por ejemplo, <code>python -m http.server</code> en la carpeta y luego '+
+                   '<code>http://localhost:8000</code>).'
+                  :'Revisa que el archivo esté en la misma carpeta que esta página. ('+esc(err.message)+')'));
+    });
+})();
+</script>
+</body>
+</html>
